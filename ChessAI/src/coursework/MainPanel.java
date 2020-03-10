@@ -2,6 +2,10 @@ package coursework;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 
 import javax.swing.ImageIcon;
@@ -18,6 +22,8 @@ public class MainPanel extends JPanel implements Runnable {
 	private ImageIcon boardImg;
 	private ImageIcon wPawn, wRook, wBishop, wKnight, wQueen, wKing;
 	private ImageIcon bPawn, bRook, bBishop, bKnight, bQueen, bKing;
+	
+	private int mouseX = 0, mouseY = 0;
 	
 	private Thread game;
 
@@ -39,8 +45,19 @@ public class MainPanel extends JPanel implements Runnable {
 		repaint();
 		setFocusable(true);
 		setVisible(true);
+		addMouseListener(new MouseAdapter() {
+				@Override
+		        public void mousePressed(MouseEvent e) {
+		        	System.out.println(e.getX());
+		        	mouseY = e.getY();
+		        }
+			});
 		game = new Thread(this);
 		game.start();
+	}
+	
+	public void setMouseX(int x) {
+		mouseX = x;
 	}
 	
 	@Override
@@ -92,6 +109,16 @@ public class MainPanel extends JPanel implements Runnable {
 						break;
 					}
 					g.drawImage(i.getImage(), 80 + 44*col, 386 - 44*row, 44, 44, null);
+					Rectangle r = new Rectangle(80 + 44*col, 386 - 44*row, 44, 44);
+					System.out.println(mouseX + "," + mouseY);
+					if(r.contains(mouseX, mouseY)) {
+						for(String s : getPossibleMoves(board, col, row)) {
+							int x = Integer.parseInt(s.split(",")[0]);
+							int y = Integer.parseInt(s.split(",")[0]);
+							g.drawRect(80 + 44*x, 386 - 44*y, 44, 44);
+							System.out.println(x + "," + y);
+						}
+					}
 				}
 			}
 		}
@@ -99,6 +126,7 @@ public class MainPanel extends JPanel implements Runnable {
 
 	@Override
 	public void run() {
+		System.out.println(mouseX + "," + mouseY);
 		repaint();
 		try {
 			game.sleep(40);
@@ -395,4 +423,5 @@ public class MainPanel extends JPanel implements Runnable {
 		board[4][0] = 6; //white
 		board[3][7] = -6; //black
 	}
+	
 }
