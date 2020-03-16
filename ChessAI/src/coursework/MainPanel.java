@@ -219,8 +219,12 @@ public class MainPanel extends JPanel implements Runnable {
 		if (Math.abs(b[col][row]) == 1) {
 			int a = row + b[col][row];
 			if (a >= 0 && a < 8) {
-				if (b[col][a] == 0)
+				if (b[col][a] == 0) {
 					possibleMoves.add(col + "," + a);
+					if(row == ((playerSign == 1) ? 1 : 6) && b[col][a + b[col][row]] == 0) {
+						possibleMoves.add(col + "," + (a + b[col][row]));
+					}
+				}
 				if (col - 1 >= 0) {
 					if (b[col - 1][a] != 0 && getSign(b[col - 1][a]) != playerSign)
 						possibleMoves.add((col - 1)+ "," + a);
