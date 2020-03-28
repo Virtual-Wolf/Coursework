@@ -33,6 +33,8 @@ public class MainPanel extends JPanel implements Runnable {
 	
 	private int mouseX = 0, mouseY = 0, mPosX = 0, mPosY = 0;
 	
+	private boolean checkmate = false;
+	
 	private Random r;
 
 	public MainPanel() {
@@ -56,32 +58,36 @@ public class MainPanel extends JPanel implements Runnable {
 		addMouseListener(new MouseAdapter() {
 				@Override
 		        public void mousePressed(MouseEvent e) {
-		        	mouseX = e.getX();
-		        	mouseY = e.getY();
-		        	mPosX = e.getX();
-		        	mPosY = e.getY();
+					if(!checkmate) {
+			        	mouseX = e.getX();
+			        	mouseY = e.getY();
+			        	mPosX = e.getX();
+			        	mPosY = e.getY();
+					}
 		        }
 				
 				@Override
-				public void mouseReleased(MouseEvent e) {				
-					int newCol = -1, newRow = -1, oldCol = -1, oldRow = -1;
-					for(int col = 0; col <=7; col++) {
-						for(int row = 0; row <=7; row++) {
-							Rectangle r = new Rectangle(80 + 44 * col, 386 - 44 * row, 44, 44);
-							if(r.contains(mouseX, mouseY)) {
-								if(getSign(board[col][row]) == 1) {
-									oldCol = col;
-									oldRow = row;
+				public void mouseReleased(MouseEvent e) {
+					if(!checkmate) {
+						int newCol = -1, newRow = -1, oldCol = -1, oldRow = -1;
+						for(int col = 0; col <=7; col++) {
+							for(int row = 0; row <=7; row++) {
+								Rectangle r = new Rectangle(80 + 44 * col, 386 - 44 * row, 44, 44);
+								if(r.contains(mouseX, mouseY)) {
+									if(getSign(board[col][row]) == 1) {
+										oldCol = col;
+										oldRow = row;
+									}
+								} else if(r.contains(mPosX, mPosY)) {
+									newCol = col;
+									newRow = row;
 								}
-							} else if(r.contains(mPosX, mPosY)) {
-								newCol = col;
-								newRow = row;
 							}
 						}
-					}
-					if(newCol >= 0 && newRow >= 0 && oldCol >= 0 && oldRow >= 0) {
-						if(playerMove(oldCol, oldRow, newCol, newRow)) {
-							computerMove();
+						if(newCol >= 0 && newRow >= 0 && oldCol >= 0 && oldRow >= 0) {
+							if(playerMove(oldCol, oldRow, newCol, newRow)) {
+								computerMove();
+							}
 						}
 					}
 					mouseX = 0;
@@ -93,8 +99,10 @@ public class MainPanel extends JPanel implements Runnable {
 		addMouseMotionListener(new MouseAdapter() {
 			@Override
 			public void mouseDragged(MouseEvent e) {
-				mPosX = e.getX();
-	        	mPosY = e.getY();
+				if(!checkmate) {
+					mPosX = e.getX();
+		        	mPosY = e.getY();
+				}
 			}
 		});
 		executor = Executors.newScheduledThreadPool(1);
@@ -196,20 +204,81 @@ public class MainPanel extends JPanel implements Runnable {
 	}
 	
 	private void computerMove() {
-		ArrayList<String> possibleMoves = new ArrayList<String>();
+		String bestMove[] = {"", ""};
+		int oC = 0, oR = 0;
+		int bestScore = 10000000;
 		for (int col = 0; col < 8; col++) {
 			for (int row = 0; row < 8; row++) {
 				if(getSign(board[col][row]) == -1) {
 					for(String s : getPossibleMoves(board, col, row, true)) {
-						possibleMoves.add(col + "," + row + "," + s);
+						int tBoard[][] = new int[8][8];
+						for (int c = 0; c < 8; c++) {
+							for (int r = 0; r < 8; r++) {
+								tBoard[c][r] = board[c][r];
+							}
+						}
+						tBoard[Integer.parseInt(s.split(",")[0])][Integer.parseInt(s.split(",")[1])] = tBoard[col][row];
+						tBoard[col][row] = 0;
+						int score = evaluateBoard(tBoard);
+						if(score < bestScore) {
+							bestScore = score;
+							bestMove = s.split(",");
+							oC = col;
+							oR = row;
+						}
 					}
 				}
 			}
 		}
-		String move[] = possibleMoves.get(r.nextInt(possibleMoves.size())).split(",");
-		board[Integer.parseInt(move[2])][Integer.parseInt(move[3])] = board[Integer.parseInt(move[0])][Integer.parseInt(move[1])];
-		board[Integer.parseInt(move[0])][Integer.parseInt(move[1])] = 0;
-		
+		if(bestScore < 10000000) {
+			board[Integer.parseInt(bestMove[0])][Integer.parseInt(bestMove[1])] = board[oC][oR];
+			board[oC][oR] = 0;
+		} else {
+			checkMate(1);
+		}
+	}
+	
+	private void checkMate(int winner) {
+		checkmate = true;
+	}
+	
+	private Integer evaluateBoard(int[][] b) {
+		int score = 0;
+		for (int col = 0; col < 8; col++) {
+			for (int row = 0; row < 8; row++) {
+				int sign = getSign(b[col][row]);
+				switch (Math.abs(b[col][row])) {
+				//no piece
+					case 0:
+						break;
+					//pawn
+					case 1:
+						score += sign * 10;
+						break;
+					//rook
+					case 2:
+						score += sign * 50;
+						break;
+					//bishop
+					case 3:
+						score += sign * 30;
+						break;
+					//knight
+					case 4:
+						score += sign * 30;
+						break;
+					//queen
+					case 5:
+						score += sign * 90;
+						break;
+					//king
+					case 6:
+						score += sign * 900;
+						break;
+				}
+			}
+		}
+		return score;
 	}
 	
 	private ArrayList<String> getPossibleMoves(int[][] b, int col, int row, boolean needToCheckCheck) {
@@ -439,22 +508,24 @@ public class MainPanel extends JPanel implements Runnable {
 				}
 			}
 		}
+		ArrayList<String> toRemove = new ArrayList<String>();
 		if (needToCheckCheck) {
 			for (String s : possibleMoves) {
 				int tBoard[][] = new int[8][8];
-				for(int c = 0; col <8; col++) {
-					for(int r = 0; row <8; row++) {
+				for (int c = 0; c < 8; c++) {
+					for (int r = 0; r < 8; r++) {
 						tBoard[c][r] = b[c][r];
 					}
 				}
-				if (Integer.parseInt(s.split(",")[0])  < 8 && Integer.parseInt(s.split(",")[0]) >= 0 && Integer.parseInt(s.split(",")[1]) < 8 && Integer.parseInt(s.split(",")[1]) >= 0 && col >= 0 && col < 8 && row >= 0 && row < 8) {
-					tBoard[Integer.parseInt(s.split(",")[0])][Integer.parseInt(s.split(",")[1])] = tBoard[col][row];
-					tBoard[col][row] = 0;
-					if (isInCheck(tBoard, playerSign)) {
-						possibleMoves.remove(s);
-					}
+				tBoard[Integer.parseInt(s.split(",")[0])][Integer.parseInt(s.split(",")[1])] = tBoard[col][row];
+				tBoard[col][row] = 0;
+				if (isInCheck(tBoard, playerSign)) {
+					toRemove.add(s);
 				}
 			}
+		}
+		for (String s : toRemove) {
+			possibleMoves.remove(s);
 		}
 		return possibleMoves;
 	}
